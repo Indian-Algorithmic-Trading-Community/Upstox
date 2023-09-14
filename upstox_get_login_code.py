@@ -30,7 +30,7 @@ routes = {
     "otp_verify" : f"{service_host}/login/open/v4/auth/1fa/otp-totp/verify",
     "2fa" : f"{service_host}/login/open/v3/auth/2fa",
     "redirect_url" : f"{host}/login/authorization/redirect",
-    "oauth" : "https://service.upstox.com/login/v2/oauth/authorize",
+    "oauth" : f"{service_host}/login/v2/oauth/authorize",
 }
 
 headers = {
