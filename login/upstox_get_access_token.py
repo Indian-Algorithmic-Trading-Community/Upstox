@@ -31,6 +31,7 @@ routes = {
     "2fa" : f"{service_host}/login/open/v3/auth/2fa",
     "redirect_url" : f"{host}/login/authorization/redirect",
     "oauth" : f"{service_host}/login/v2/oauth/authorize",
+    "accesstoken_url" :  f"{host}/login/authorization/token",
 }
 
 headers = {
@@ -64,6 +65,12 @@ service_headers = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
     "x-device-details": "platform=WEB|osName=Windows/10|osVersion=Chrome/116.0.0.0|appVersion=4.0.0|modelName=Chrome|manufacturer=unknown",
 }
+
+accesstoken_headers = {
+        'accept': 'application/json',
+        'Api-Version': '2.0',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
 
 def generateUniqueID(length=10):
     characters = "1234567890abcdef"
@@ -100,14 +107,22 @@ oauth_data = {
         }
     }
 
+accesstoken_data = {
+        'client_id': API_KEY,
+        'client_secret': SECRET_KEY,
+        'redirect_uri': RURL,
+        'grant_type': 'authorization_code'
+    }
+
 
 async def get_code():
     
     async with httpx.AsyncClient() as client:
-        response = await client.get(routes["auth"], 
-                                    headers=headers, 
-                                    params=auth_params
-                                    )
+        response = await client.get(
+            routes["auth"], 
+            headers=headers, 
+            params=auth_params
+            )
 
         if response.status_code == 302:
             service_headers["cookie"] = "; ".join([f"{name}={value}" for name, value in response.cookies.items()])
@@ -184,11 +199,29 @@ async def get_code():
                                         code = query_params['code'][0]
                                         logging.info(code)
                                         return code
+        else:
+            logging.info(f"Request failed with status code {response.status_code}")
 
+async def getAccessToken(code):
 
+    accesstoken_data["code"] = code
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            routes["accesstoken_url"], 
+            headers=accesstoken_headers, 
+            data=accesstoken_data
+            )
+    if response.status_code == 200:
+        logging.info(response.text)
+        access_token = response.json().get("access_token", "")
+        logging.info("access_token: {}".format(access_token))
+        return access_token
+    
 if __name__ == "__main__":
-    asyncio.run(get_code())
-
+    code = asyncio.run(get_code())
+    access_token = asyncio.run(getAccessToken(code))
+    print(access_token)
     
 
     
