@@ -15,7 +15,7 @@ from urllib.parse import urlparse, parse_qs
 # Paste your credentials below: 
 API_KEY = ""
 SECRET_KEY = "" # Not used here
-RURL = ""
+RURL = "" # Redirect url
 TOTP_KEY = ""
 MOBILE_NO = ""
 PIN   =    ""
