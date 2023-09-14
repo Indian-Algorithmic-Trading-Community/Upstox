@@ -1,6 +1,3 @@
-# get-upstox-login-code
-Get upstox uplink api login code using httpx
-
 # Upstox
 All Codes Which Will Help You Do Algorithmic Trading With Upstox Broker
 
