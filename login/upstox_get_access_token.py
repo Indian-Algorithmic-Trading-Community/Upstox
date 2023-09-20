@@ -89,7 +89,7 @@ async def display(response):
 
 async def get_code():
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(http2= True) as client:
         client.headers.update(headers)
         response = await client.get(
             routes["auth"], 
@@ -182,7 +182,7 @@ async def getAccessToken(code):
 
     accesstoken_data["code"] = code
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(http2= True) as client:
         response = await client.post(
             routes["accesstoken_url"],
             data=accesstoken_data
