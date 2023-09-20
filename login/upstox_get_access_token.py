@@ -35,41 +35,8 @@ routes = {
 }
 
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-}
-
-service_headers = {
-    "authority": "service.upstox.com",
-    "accept": "*/*",
-    "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
-    "cache-control": "no-cache",
-    "content-type": "application/json",
-    "origin": login_host,
-    "pragma": "no-cache",
-    "referer": f"{login_host}/",
-    "sec-ch-ua": '"Chromium";v="116", "Not)A;Brand";v="24", "Google Chrome";v="116"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-site",
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
-    "x-device-details": "platform=WEB|osName=Windows/10|osVersion=Chrome/116.0.0.0|appVersion=4.0.0|modelName=Chrome|manufacturer=unknown",
-}
-
-accesstoken_headers = {
-        'accept': 'application/json',
-        'Api-Version': '2.0',
-        'Content-Type': 'application/x-www-form-urlencoded'
+    "content-type": "application/json"
     }
 
 def generateUniqueID(length=10):
@@ -114,18 +81,22 @@ accesstoken_data = {
         'grant_type': 'authorization_code'
     }
 
+async def display(response):
+    logging.info("Error :: {}".format(response.json()))
 
 async def get_code():
     
     async with httpx.AsyncClient() as client:
+        client.headers.update(headers)
         response = await client.get(
             routes["auth"], 
-            headers=headers, 
             params=auth_params
             )
 
         if response.status_code == 302:
-            service_headers["cookie"] = "; ".join([f"{name}={value}" for name, value in response.cookies.items()])
+            client.headers.update(
+                {"x-device-details": "platform=WEB"}
+                )
             if response.next_request:
                 redirect_url = response.next_request.url
                 logging.info("Redirect URL: {}".format(redirect_url))
@@ -135,21 +106,18 @@ async def get_code():
                     logging.info("client_id:{}".format(client_id))
 
                     response = await client.post(
-                        routes["otp_generate"], 
-                        headers=service_headers, 
+                        routes["otp_generate"],
                         json=otp_data, 
                         params={
                                 "requestId" : f"WPRO-{generateUniqueID()}"
                                 }
                         )
                     if response.status_code == 200:
-                        service_headers["cookie"] = "; ".join([f"{name}={value}" for name, value in response.cookies.items()])
                         validateOTPToken = response.json()["data"].get("validateOTPToken", "")
                         logging.info(validateOTPToken)
     
                         response = await client.post(
                             routes["otp_verify"], 
-                            headers = service_headers, 
                             json = {
                                 "data": {
                                     "otp": pyotp.TOTP(TOTP_KEY).now(), 
@@ -161,12 +129,10 @@ async def get_code():
                                 }
                             )
                         if response.status_code == 200:
-                            service_headers["cookie"] = "; ".join([f"{name}={value}" for name, value in response.cookies.items()])
                             logging.info(response.text)
     
                             response = await client.post(
                                 routes["2fa"], 
-                                headers = service_headers, 
                                 json = twofa_data, 
                                 params={
                                         "client_id": client_id,
@@ -176,12 +142,10 @@ async def get_code():
                                 )
                             
                             if response.status_code == 200:
-                                service_headers["cookie"] = "; ".join([f"{name}={value}" for name, value in response.cookies.items()])
                                 logging.info(response.text)
     
                                 response = await client.post(
                                     routes["oauth"], 
-                                    headers = service_headers, 
                                     json = oauth_data, 
                                     params={
                                             "client_id": client_id,
@@ -199,8 +163,17 @@ async def get_code():
                                         code = query_params['code'][0]
                                         logging.info(code)
                                         return code
+                                else:
+                                    await display(response)
+                            else:
+                                await display(response)
+                        else:
+                            await display(response)
+                    else:
+                        await display(response)
         else:
-            logging.info(f"Request failed with status code {response.status_code}")
+            await display(response)
+                
 
 async def getAccessToken(code):
 
@@ -208,8 +181,7 @@ async def getAccessToken(code):
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            routes["accesstoken_url"], 
-            headers=accesstoken_headers, 
+            routes["accesstoken_url"],
             data=accesstoken_data
             )
     if response.status_code == 200:
