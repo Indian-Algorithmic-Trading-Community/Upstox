@@ -82,7 +82,10 @@ accesstoken_data = {
     }
 
 async def display(response):
-    logging.info("Error :: {}".format(response.json()))
+    try:
+        logging.info("Error :: {}".format(response.json()["errors"]))
+    except:
+        logging.info("Error :: {}".format(response.json()["error"]))
 
 async def get_code():
     
