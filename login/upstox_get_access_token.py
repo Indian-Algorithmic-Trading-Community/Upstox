@@ -89,8 +89,7 @@ async def display(response):
 
 async def get_code():
     
-    async with httpx.AsyncClient(http2= True) as client:
-        client.headers.update(headers)
+    async with httpx.AsyncClient(http2= True, headers= headers) as client:
         response = await client.get(
             routes["auth"], 
             params=auth_params
