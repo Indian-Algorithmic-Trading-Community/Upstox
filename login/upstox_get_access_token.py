@@ -20,18 +20,17 @@ TOTP_KEY = ""
 MOBILE_NO = ""
 PIN   =    ""
 
-host = "https://api-v2.upstox.com"
-service_host = "https://service.upstox.com"
-login_host = "https://login.upstox.com"
+host = "https://api-v2.upstox.com/login/authorization"
+service_host = "https://service.upstox.com/login"
 
 routes = {
-    "auth" : f"{host}/login/authorization/dialog",
-    "otp_generate" : f"{service_host}/login/open/v5/auth/1fa/otp/generate",
-    "otp_verify" : f"{service_host}/login/open/v4/auth/1fa/otp-totp/verify",
-    "2fa" : f"{service_host}/login/open/v3/auth/2fa",
-    "redirect_url" : f"{host}/login/authorization/redirect",
-    "oauth" : f"{service_host}/login/v2/oauth/authorize",
-    "accesstoken_url" :  f"{host}/login/authorization/token",
+    "auth" : f"{host}/dialog",
+    "otp_generate" : f"{service_host}/open/v5/auth/1fa/otp/generate",
+    "otp_verify" : f"{service_host}/open/v4/auth/1fa/otp-totp/verify",
+    "2fa" : f"{service_host}/open/v3/auth/2fa",
+    "redirect_url" : f"{host}/redirect",
+    "oauth" : f"{service_host}/v2/oauth/authorize",
+    "accesstoken_url" :  f"{host}/token",
 }
 
 headers = {
