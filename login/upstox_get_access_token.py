@@ -96,7 +96,7 @@ async def get_code():
 
         if response.status_code == 302:
             client.headers.update(
-                {"x-device-details": "platform=WEB"}
+                {"x-device-details": "platform=WEB|osName=Windows/10|osVersion=Chrome/116.0.0.0|appVersion=4.0.0|modelName=Chrome|manufacturer=unknown"}
                 )
             if response.next_request:
                 redirect_url = response.next_request.url
