@@ -20,23 +20,51 @@ TOTP_KEY = ""
 MOBILE_NO = ""
 PIN   =    ""
 
-host = "https://api-v2.upstox.com/login/authorization"
-service_host = "https://service.upstox.com/login"
+host = "https://api.upstox.com/v2" #"https://api-v2.upstox.com"
+host_2 = "https://api-v2.upstox.com"
+service_host = "https://service.upstox.com"
+login_host = "https://login.upstox.com"
 
 routes = {
-    "auth" : f"{host}/dialog",
-    "otp_generate" : f"{service_host}/open/v5/auth/1fa/otp/generate",
-    "otp_verify" : f"{service_host}/open/v4/auth/1fa/otp-totp/verify",
-    "2fa" : f"{service_host}/open/v3/auth/2fa",
-    "redirect_url" : f"{host}/redirect",
-    "oauth" : f"{service_host}/v2/oauth/authorize",
-    "accesstoken_url" :  f"{host}/token",
+    "auth" : f"{host}/login/authorization/dialog",
+    "otp_generate" : f"{service_host}/login/open/v5/auth/1fa/otp/generate",
+    "otp_verify" : f"{service_host}/login/open/v4/auth/1fa/otp-totp/verify",
+    "2fa" : f"{service_host}/login/open/v3/auth/2fa",
+    "redirect_url" : f"{host_2}/login/authorization/redirect",
+    "oauth" : f"{service_host}/login/v2/oauth/authorize",
+    "accesstoken_url" :  f"{host}/login/authorization/token",
 }
 
 headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "content-type": "application/json"
-    }
+    "Accept-Language": "en-US,en;q=0.5",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+}
+
+service_headers = {
+    'Accept': '*/*',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/json',
+    'Host': 'service.upstox.com',
+    'Origin': login_host,
+    'Referer': f"{login_host}/",
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
+    'TE': 'trailers',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0',
+    'X-Device-Details': 'platform=WEB|osName=Windows/10|osVersion=Firefox/118.0|appVersion=4.0.0|modelName=Firefox|manufacturer=unknown'
+    
+}
 
 def generateUniqueID(length=10):
     characters = "1234567890abcdef"
@@ -81,23 +109,18 @@ accesstoken_data = {
     }
 
 async def display(response):
-    try:
-        logging.info("Error :: {}".format(response.json()["errors"]))
-    except:
-        logging.info("Error :: {}".format(response.json()["error"]))
-
+    logging.info("Error :: {}".format(response.text))
+    
 async def get_code():
     
-    async with httpx.AsyncClient(http2= True, headers= headers) as client:
+    async with httpx.AsyncClient() as client:
         response = await client.get(
             routes["auth"], 
+            headers=headers, 
             params=auth_params
             )
 
         if response.status_code == 302:
-            client.headers.update(
-                {"x-device-details": "platform=WEB|osName=Windows/10|osVersion=Chrome/116.0.0.0|appVersion=4.0.0|modelName=Chrome|manufacturer=unknown"}
-                )
             if response.next_request:
                 redirect_url = response.next_request.url
                 logging.info("Redirect URL: {}".format(redirect_url))
@@ -107,11 +130,13 @@ async def get_code():
                     logging.info("client_id:{}".format(client_id))
 
                     response = await client.post(
-                        routes["otp_generate"],
+                        routes["otp_generate"], 
+                        headers={
+                            **service_headers, 
+                            "X-Request-ID": generateUniqueID()
+                            }, 
                         json=otp_data, 
-                        params={
-                                "requestId" : f"WPRO-{generateUniqueID()}"
-                                }
+                        
                         )
                     if response.status_code == 200:
                         validateOTPToken = response.json()["data"].get("validateOTPToken", "")
@@ -119,26 +144,37 @@ async def get_code():
     
                         response = await client.post(
                             routes["otp_verify"], 
+                            headers = {
+                                    **service_headers, 
+                                    "X-Request-ID": generateUniqueID()
+                                    } , 
                             json = {
                                 "data": {
                                     "otp": pyotp.TOTP(TOTP_KEY).now(), 
                                     "validateOtpToken": validateOTPToken,
                                     }
                                 }, 
-                            params={
-                                "requestId" : f"WPRO-{generateUniqueID()}"
-                                }
+                            
                             )
                         if response.status_code == 200:
                             logging.info(response.text)
+                            userprofile = response.json()["data"]["userProfile"]
+                            profile_id = userprofile.get("profileId")
+                            user_id = userprofile.get("userId")
+                            logging.info("Profile :: {} and user :: {}".format(profile_id, user_id))
     
                             response = await client.post(
                                 routes["2fa"], 
+                                headers = {
+                                    **service_headers, 
+                                    "X-Request-ID": generateUniqueID(),
+                                    "X-Profile-Id": str(profile_id),
+                                    "X-User-Id":user_id
+                                    }, 
                                 json = twofa_data, 
                                 params={
                                         "client_id": client_id,
-                                        "redirect_uri": routes["redirect_url"],
-                                        "requestId": f"WPRO-{generateUniqueID()}"
+                                        "redirect_uri": routes["redirect_url"]
                                     }
                                 )
                             
@@ -147,11 +183,14 @@ async def get_code():
     
                                 response = await client.post(
                                     routes["oauth"], 
+                                    headers = {
+                                        **service_headers, 
+                                        "X-Request-ID": generateUniqueID()
+                                        }, 
                                     json = oauth_data, 
                                     params={
                                             "client_id": client_id,
                                             "redirect_uri": routes["redirect_url"],
-                                            "requestId": f"WPRO-{generateUniqueID()}",
                                             "response_type": "code",
                                         }
                                     )
