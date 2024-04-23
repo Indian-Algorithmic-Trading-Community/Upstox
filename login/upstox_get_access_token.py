@@ -20,6 +20,11 @@ TOTP_KEY = ""
 MOBILE_NO = ""
 PIN   =    ""
 
+host = "https://api.upstox.com/v2" #"https://api-v2.upstox.com"
+host_2 = "https://api-v2.upstox.com"
+service_host = "https://service.upstox.com"
+login_host = "https://login.upstox.com"
+
 routes = {
     "auth" : f"{host}/login/authorization/dialog",
     "otp_generate" : f"{service_host}/login/open/v6/auth/1fa/otp/generate",
