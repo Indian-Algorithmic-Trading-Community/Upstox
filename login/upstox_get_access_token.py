@@ -20,14 +20,9 @@ TOTP_KEY = ""
 MOBILE_NO = ""
 PIN   =    ""
 
-host = "https://api.upstox.com/v2" #"https://api-v2.upstox.com"
-host_2 = "https://api-v2.upstox.com"
-service_host = "https://service.upstox.com"
-login_host = "https://login.upstox.com"
-
 routes = {
     "auth" : f"{host}/login/authorization/dialog",
-    "otp_generate" : f"{service_host}/login/open/v5/auth/1fa/otp/generate",
+    "otp_generate" : f"{service_host}/login/open/v6/auth/1fa/otp/generate",
     "otp_verify" : f"{service_host}/login/open/v4/auth/1fa/otp-totp/verify",
     "2fa" : f"{service_host}/login/open/v3/auth/2fa",
     "redirect_url" : f"{host_2}/login/authorization/redirect",
@@ -127,20 +122,32 @@ async def get_code():
                 query_params = parse_qs(urlparse(str(redirect_url)).query)
                 if 'client_id' in query_params:
                     client_id = query_params['client_id'][0]
-                    logging.info("client_id:{}".format(client_id))
+                    user_id = query_params['user_id'][0]
+                    logging.info("client_id: {}    user_id: {}".format(client_id, user_id))
 
+                    #await client.options(routes["otp_generate"], headers=service_headers)
+                    logging.info(f"Cookies :: {client.cookies}")
                     response = await client.post(
                         routes["otp_generate"], 
                         headers={
                             **service_headers, 
                             "X-Request-ID": generateUniqueID()
                             }, 
-                        json=otp_data, 
+                        json={
+                            "data": {
+                                **otp_data["data"],
+                                "userId":user_id
+                                }
+                            } 
                         
                         )
                     if response.status_code == 200:
-                        validateOTPToken = response.json()["data"].get("validateOTPToken", "")
-                        logging.info(validateOTPToken)
+                        try:
+                            validateOTPToken = response.json()["data"].get("validateOTPToken", "")
+                            logging.info(validateOTPToken)
+                        except KeyError:
+                            logging.error(response.json().get("error"))
+                            sys.exit()
     
                         response = await client.post(
                             routes["otp_verify"], 
@@ -234,7 +241,5 @@ if __name__ == "__main__":
     code = asyncio.run(get_code())
     access_token = asyncio.run(getAccessToken(code))
     print(access_token)
-    
-
     
         
