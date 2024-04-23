@@ -8,7 +8,7 @@ import logging
 from urllib.parse import urlparse, parse_qs
 
 #logging.getLogger(__name__)
-#logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 #os.environ['PYTHONASYNCIODEBUG'] = '1'
 
